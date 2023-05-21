@@ -41,6 +41,7 @@ def extend_hash(args):
             to_append = base64.b64decode(args.data_to_append)
         case "str":
             to_append = args.data_to_append.encode('utf-8')
+
     actual_data_appended, final_digest = sha_functions.length_extend(initial_digest, args.data_length, to_append)
     print("Actual data that was appended was: ")
     print(actual_data_appended)
@@ -55,8 +56,33 @@ def extend_hash(args):
         case "raw":
             print(final_digest)
 
+def crack_hash(args):
+    match args.hash_format:
+        case "hex":
+            target_digest = bytes.fromhex(args.hash)
+        case "b64":
+            target_digest = base64.b64decode(args.hash)
+        case "dec":
+            target_digest = int(args.hash).to_bytes(32)
+
+    if args.wordlist:
+        with open(args.wordlist, 'r') as f:
+            words = f.read().splitlines()
+            for word in words:
+                if args.salt_prefix:
+                    word = args.salt_prefix + word
+                if args.salt_suffix:
+                    word = word + args.salt_suffix
+                if args.verbose:
+                    print(f"Attempting: {word}")
+                if sha_functions.sha256(word.encode('utf-8')) == target_digest:
+                    print(f"Cracked: {word}")
+                    break
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("shatool", description="Multipurpose tool for operations and attacks relating to the SHA256 hashing algorithm")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Use verbose output")
     subparsers = parser.add_subparsers(title="subcommands")
     parser_calc = subparsers.add_parser("calc", help="Calculate the SHA256 hash of some data")
     parser_calc.set_defaults(func=calc_hash)
@@ -74,7 +100,14 @@ if __name__ == "__main__":
     parser_extend.add_argument("-of", "--output-format", type=str, default="hex", choices=["hex", "b64", "dec", "raw"], help="The format in which to output the final calculated hash")
     parser_extend.add_argument("-if", "--data-format", type=str, choices=["file", "hex", "b64", "str"], required=True, help="The format which the data to append is given as")
     parser_extend.add_argument("data_to_append", type=str, help="The additional data to append to the end of the original unknown data")
-    #parser_crack = subparsers.add_parser("crack", help="Attempt to crack a SHA hash")
+    parser_crack = subparsers.add_parser("crack", help="Attempt to crack a SHA hash")
+    parser_crack.set_defaults(func=crack_hash)
+    parser_crack.add_argument("-hf", "--hash-format", type=str, default="hex", choices=["hex", "b64", "dec"], help="The format the target hash is given as")
+    parser_crack.add_argument("hash", type=str, help="The target hash to crack")
+    crack_methods = parser_crack.add_mutually_exclusive_group(required=True)
+    crack_methods.add_argument("-w", "--wordlist", type=str, help="Wordlist containing potential preimage candidates")
+    parser_crack.add_argument("-sp", "--salt-prefix", type=str, help="Salt to PREPEND to the candidates in a wordlist")
+    parser_crack.add_argument("-ss", "--salt-suffix", type=str, help="Salt to APPEND to the candidates in a wordlist")
     args = parser.parse_args() 
     try:
         args.func(args)
