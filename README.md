@@ -1,8 +1,7 @@
 # shatool
 A tool to perform common attacks (e.g. length extension) and operations relating to the SHA256 hashing algorithm
 
-### Currently implemented: Hash calculation, length extension attacks
-### WIP: Preimage brute-force attacks
+### Currently implemented: Hash calculation, length extension attacks, dictionary attacks
 
 ## Hash calculation
 Simply calculate the SHA256 digest of some input data and output it in the desired format:
